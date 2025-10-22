@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NomadReads</title>
+  <link rel="stylesheet" href="styles.css?v=llm1" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">
+      <h1>NomadReads</h1>
+      <p class="tagline">Place. Story. Journey.</p>
+    </div>
+    <form id="search-form" class="search">
+      <input type="text" placeholder="Where are you traveling?" name="destination" required />
+      <button type="submit" aria-label="Discover reads">Discover Reads</button>
+    </form>
+  </header>
+
+  <!-- RESULTS appear ABOVE the carousel -->
+  <main>
+    <section id="results" class="results" hidden></section>
+  </main>
+
+  <!-- Carousel (unchanged, sits below results) -->
+  <section class="carousel" aria-label="Seasonal images">
+    <div class="carousel-track">
+      <div class="slide"><img src="images/autumn-leaves.jpg?v=ct4" alt="Autumn Leaves" /></div>
+      <div class="slide"><img src="images/autumn-forest.jpg?v=ct4" alt="Autumn Forest" /></div>
+      <div class="slide"><img src="images/autumn-japan.jpg?v=ct4" alt="Autumn River Scene" /></div>
+      <div class="slide"><img src="images/winter-snow.jpg?v=ct4" alt="Winter Snow" /></div>
+      <div class="slide"><img src="images/spring-blossom.jpg?v=ct4" alt="Spring Blossom" /></div>
+      <div class="slide"><img src="images/summer-coast.jpg?v=ct4" alt="Summer Coast" /></div>
+    </div>
+    <button class="carousel-btn prev" aria-label="Previous slide">‹</button>
+    <button class="carousel-btn next" aria-label="Next slide">›</button>
+    <div class="carousel-dots" role="tablist" aria-label="Choose slide"></div>
+  </section>
+
+  <footer>
+    <section id="about">
+      <h3>About NomadReads</h3>
+      <p>Bringing the world to your bookshelf — one destination at a time.</p>
+    </section>
+    <section id="contact">
+      <h3>Contact Us</h3>
+      <p><a href="mailto:hello@nomadreads.net">hello@nomadreads.net</a></p>
+    </section>
+  </footer>
+
+  <script>
+    // ----- Carousel (same logic as before) -----
+    const track = document.querySelector('.carousel-track');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const prevBtn = document.querySelector('.prev');
+    const nextBtn = document.querySelector('.next');
+    const dots = document.querySelector('.carousel-dots');
+
+    slides.forEach((_, i) => { const b = document.createElement('button'); b.className='dot'; b.setAttribute('role','tab'); b.setAttribute('aria-label','Slide '+(i+1)); b.addEventListener('click', () => goTo(i, true)); dots.appendChild(b); });
+    let current=0; function update(){ track.style.transform = `translateX(-${current*100}%)`; dots.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active', i===current)); }
+    function goTo(i,user){ current=(i+slides.length)%slides.length; update(); if(user) restartAuto(); }
+    prevBtn.addEventListener('click', ()=>goTo(current-1,true)); nextBtn.addEventListener('click', ()=>goTo(current+1,true));
+    let timer; function startAuto(){ timer=setInterval(()=>goTo(current+1,false), 5000); } function stopAuto(){ clearInterval(timer); } function restartAuto(){ stopAuto(); startAuto(); }
+    startAuto(); document.querySelector('.carousel').addEventListener('mouseenter', stopAuto); document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
+    let startX=null; track.addEventListener('touchstart', e=>startX=e.touches[0].clientX); track.addEventListener('touchend', e=>{ if(startX==null)return; const dx=e.changedTouches[0].clientX-startX; if(Math.abs(dx)>40) goTo(current+(dx<0?1:-1), true); startX=null; });
+    update();
+
+    // ----- Results fetch & render (LLM) -----
+    const form = document.getElementById('search-form');
+    const input = form.querySelector('input[name="destination"]');
+    const results = document.getElementById('results');
+
+    function cardHTML(b) {
+      return `
+      <div class="card">
+        <div class="card-title">${b.title}</div>
+        <div class="card-author">by ${b.author || "Unknown"}</div>
+        <p class="card-why">${b.why || ""}</p>
+        <div class="links">
+          <a href="${b.links.paperback}" target="_blank" rel="noopener">Paperback</a>
+          <a href="${b.links.kindle}" target="_blank" rel="noopener">Kindle</a>
+          <a href="${b.links.audio}" target="_blank" rel="noopener">Audiobook</a>
+        </div>
+      </div>`;
+    }
+
+    function render(data){
+      const cols = data.categories.map(cat => `
+        <div class="genre">
+          <h2>${cat.name}</h2>
+          <div class="cards">
+            ${cat.books.map(cardHTML).join("")}
+          </div>
+        </div>`).join("");
+
+      results.innerHTML = `
+        <h2 class="results-title">Top books for <em>${data.destination}</em></h2>
+        <div class="genres">${cols}</div>`;
+      results.hidden = false;
+      results.scrollIntoView({ behavior: "smooth" });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const destination = input.value.trim();
+      if (!destination) return;
+
+      results.hidden = false;
+      results.innerHTML = `<div class="loading">Finding books for <strong>${destination}</strong>…</div>`;
+
+      try {
+        const locale = Intl.DateTimeFormat().resolvedOptions().locale || "";
+        const r = await fetch('/.netlify/functions/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destination, locale })
+        });
+        if (!r.ok) {
+          const msg = await r.text().catch(() => r.statusText);
+          throw new Error(`API error ${r.status}: ${msg}`);
+        }
+        const data = await r.json();
+        render(data);
+      } catch (err) {
+        console.error(err);
+        results.innerHTML = `<p class="error">Couldn’t fetch recommendations.<br/><small>${String(err.message || err)}</small></p>`;
+      }
+    });
+  </script>
+</body>
+</html>
