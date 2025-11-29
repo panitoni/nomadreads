@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NomadReads</title>
-  <link rel="stylesheet" href="styles.css?v=llm1" />
+  <link rel="stylesheet" href="styles.css?v=ct4" />
 </head>
 <body>
   <header class="site-header">
@@ -14,16 +14,10 @@
     </div>
     <form id="search-form" class="search">
       <input type="text" placeholder="Where are you traveling?" name="destination" required />
-      <button type="submit" aria-label="Discover reads">Discover Reads</button>
+      <button type="submit" aria-label="Discover Reads">Discover Reads</button>
     </form>
   </header>
 
-  <!-- RESULTS appear ABOVE the carousel -->
-  <main>
-    <section id="results" class="results" hidden></section>
-  </main>
-
-  <!-- Carousel (unchanged, sits below results) -->
   <section class="carousel" aria-label="Seasonal images">
     <div class="carousel-track">
       <div class="slide"><img src="images/autumn-leaves.jpg?v=ct4" alt="Autumn Leaves" /></div>
@@ -38,6 +32,62 @@
     <div class="carousel-dots" role="tablist" aria-label="Choose slide"></div>
   </section>
 
+  <main>
+    <section id="recommendations" class="genres">
+      <div class="genre">
+        <h2>Romance</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-title">Sample Title</div>
+            <div class="card-author">by Sample Author</div>
+            <p class="card-why">
+              A place-anchored love story that captures the destination's mood.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="genre">
+        <h2>Mystery &amp; Thriller</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-title">Sample Title</div>
+            <div class="card-author">by Sample Author</div>
+            <p class="card-why">
+              Atmospheric, propulsive, and rooted in local detail.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="genre">
+        <h2>Historical Fiction</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-title">Sample Title</div>
+            <div class="card-author">by Sample Author</div>
+            <p class="card-why">
+              Immersive narratives that bring a place's past to life.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="genre other">
+        <h2>Other Suggestions</h2>
+        <div class="cards">
+          <div class="card">
+            <div class="card-title">Sample Title</div>
+            <div class="card-author">by Sample Author</div>
+            <p class="card-why">
+              A locally beloved memoir or essay collection.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
   <footer>
     <section id="about">
       <h3>About NomadReads</h3>
@@ -50,307 +100,154 @@
   </footer>
 
   <script>
-  // --------- Carousel code (existing) ----------
-  const track = document.querySelector('.carousel-track');
-  const slides = Array.from(document.querySelectorAll('.slide'));
-  const prevBtn = document.querySelector('.prev');
-  const nextBtn = document.querySelector('.next');
-  const dots = document.querySelector('.carousel-dots');
+    // --------- Carousel code ----------
+    const track = document.querySelector('.carousel-track');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const prevBtn = document.querySelector('.prev');
+    const nextBtn = document.querySelector('.next');
+    const dots = document.querySelector('.carousel-dots');
 
-  slides.forEach((_, i) => {
-    const b = document.createElement('button');
-    b.className = 'dot';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', 'Slide ' + (i + 1));
-    b.addEventListener('click', () => goTo(i, true));
-    dots.appendChild(b);
-  });
-
-  let current = 0;
-  function updateCarousel() {
-    track.style.transform = `translateX(-${current * 100}%)`;
-    dots.querySelectorAll('.dot').forEach((d, i) =>
-      d.classList.toggle('active', i === current)
-    );
-  }
-
-  function goTo(i, user) {
-    current = (i + slides.length) % slides.length;
-    updateCarousel();
-    if (user) restartAuto();
-  }
-
-  prevBtn.addEventListener('click', () => goTo(current - 1, true));
-  nextBtn.addEventListener('click', () => goTo(current + 1, true));
-
-  let timer;
-  function startAuto() {
-    timer = setInterval(() => goTo(current + 1, false), 5000);
-  }
-  function stopAuto() {
-    clearInterval(timer);
-  }
-  function restartAuto() {
-    stopAuto();
-    startAuto();
-  }
-
-  startAuto();
-  document.querySelector('.carousel').addEventListener('mouseenter', stopAuto);
-  document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
-
-  let startX = null;
-  track.addEventListener('touchstart', e => (startX = e.touches[0].clientX));
-  track.addEventListener('touchend', e => {
-    if (startX == null) return;
-    const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1), true);
-    startX = null;
-  });
-
-  updateCarousel();
-
-  // --------- New: Book recommendation logic ----------
-
-  const form = document.getElementById('search-form');
-  const recommendationsSection = document.getElementById('recommendations');
-
-  // Helper: find a genre block by its heading text
-  function getGenreElement(headingText) {
-    const genres = recommendationsSection.querySelectorAll('.genre');
-    for (const genre of genres) {
-      const h2 = genre.querySelector('h2');
-      if (h2 && h2.textContent.trim() === headingText) {
-        return genre;
-      }
-    }
-    return null;
-  }
-
-  function renderCards(genreName, items) {
-    const genreEl = getGenreElement(genreName);
-    if (!genreEl) return;
-
-    const cardsContainer = genreEl.querySelector('.cards');
-    cardsContainer.innerHTML = ''; // clear existing sample cards
-
-    if (!items || items.length === 0) {
-      cardsContainer.innerHTML = '<p class="card-why">No suggestions found.</p>';
-      return;
-    }
-
-    items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      const title = document.createElement('div');
-      title.className = 'card-title';
-      title.textContent = item.title || 'Untitled';
-
-      const author = document.createElement('div');
-      author.className = 'card-author';
-      author.textContent = item.author ? `by ${item.author}` : '';
-
-      const why = document.createElement('p');
-      why.className = 'card-why';
-      why.textContent = item.why || '';
-
-      card.appendChild(title);
-      card.appendChild(author);
-      card.appendChild(why);
-      cardsContainer.appendChild(card);
+    slides.forEach((_, i) => {
+      const b = document.createElement('button');
+      b.className = 'dot';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', 'Slide ' + (i + 1));
+      b.addEventListener('click', () => goTo(i, true));
+      dots.appendChild(b);
     });
-  }
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    let current = 0;
+    function updateCarousel() {
+      track.style.transform = `translateX(-${current * 100}%)`;
+      dots.querySelectorAll('.dot').forEach((d, i) =>
+        d.classList.toggle('active', i === current)
+      );
+    }
 
-    const destinationInput = form.elements['destination'];
-    const destination = destinationInput.value.trim();
-    if (!destination) return;
+    function goTo(i, user) {
+      current = (i + slides.length) % slides.length;
+      updateCarousel();
+      if (user) restartAuto();
+    }
 
-    // Optionally: show a "loading" state
-    form.querySelector('button').disabled = true;
-    form.querySelector('button').textContent = 'Finding reads...';
+    prevBtn.addEventListener('click', () => goTo(current - 1, true));
+    nextBtn.addEventListener('click', () => goTo(current + 1, true));
 
-    try {
-      const res = await fetch('/api/recommend', {
-        method: 'POST',
-        body: JSON.stringify({ destination })
-      });
+    let timer;
+    function startAuto() {
+      timer = setInterval(() => goTo(current + 1, false), 5000);
+    }
+    function stopAuto() {
+      clearInterval(timer);
+    }
+    function restartAuto() {
+      stopAuto();
+      startAuto();
+    }
 
-      if (!res.ok) {
-        console.error('API error:', await res.text());
-        alert('Sorry, something went wrong fetching recommendations.');
+    startAuto();
+    document.querySelector('.carousel').addEventListener('mouseenter', stopAuto);
+    document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
+
+    let startX = null;
+    track.addEventListener('touchstart', e => (startX = e.touches[0].clientX));
+    track.addEventListener('touchend', e => {
+      if (startX == null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1), true);
+      startX = null;
+    });
+
+    updateCarousel();
+
+    // --------- Book recommendation logic ----------
+
+    const form = document.getElementById('search-form');
+    const recommendationsSection = document.getElementById('recommendations');
+
+    function getGenreElement(headingText) {
+      const genres = recommendationsSection.querySelectorAll('.genre');
+      for (const genre of genres) {
+        const h2 = genre.querySelector('h2');
+        if (h2 && h2.textContent.trim() === headingText) {
+          return genre;
+        }
+      }
+      return null;
+    }
+
+    function renderCards(genreName, items) {
+      const genreEl = getGenreElement(genreName);
+      if (!genreEl) return;
+
+      const cardsContainer = genreEl.querySelector('.cards');
+      cardsContainer.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        cardsContainer.innerHTML = '<p class="card-why">No suggestions found.</p>';
         return;
       }
 
-      const data = await res.json();
-      const recs = data.recommendations || {};
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
 
-      renderCards('Romance', recs['Romance']);
-      renderCards('Mystery & Thriller', recs['Mystery & Thriller']);
-      renderCards('Historical Fiction', recs['Historical Fiction']);
-      renderCards('Other Suggestions', recs['Other Suggestions']);
-    } catch (err) {
-      console.error(err);
-      alert('Network error while contacting the server.');
-    } finally {
-      form.querySelector('button').disabled = false;
-      form.querySelector('button').textContent = 'Discover Reads';
-    }
-  });
-<script>
-  // --------- Carousel code (existing) ----------
-  const track = document.querySelector('.carousel-track');
-  const slides = Array.from(document.querySelectorAll('.slide'));
-  const prevBtn = document.querySelector('.prev');
-  const nextBtn = document.querySelector('.next');
-  const dots = document.querySelector('.carousel-dots');
+        const title = document.createElement('div');
+        title.className = 'card-title';
+        title.textContent = item.title || 'Untitled';
 
-  slides.forEach((_, i) => {
-    const b = document.createElement('button');
-    b.className = 'dot';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', 'Slide ' + (i + 1));
-    b.addEventListener('click', () => goTo(i, true));
-    dots.appendChild(b);
-  });
+        const author = document.createElement('div');
+        author.className = 'card-author';
+        author.textContent = item.author ? `by ${item.author}` : '';
 
-  let current = 0;
-  function updateCarousel() {
-    track.style.transform = `translateX(-${current * 100}%)`;
-    dots.querySelectorAll('.dot').forEach((d, i) =>
-      d.classList.toggle('active', i === current)
-    );
-  }
+        const why = document.createElement('p');
+        why.className = 'card-why';
+        why.textContent = item.why || '';
 
-  function goTo(i, user) {
-    current = (i + slides.length) % slides.length;
-    updateCarousel();
-    if (user) restartAuto();
-  }
-
-  prevBtn.addEventListener('click', () => goTo(current - 1, true));
-  nextBtn.addEventListener('click', () => goTo(current + 1, true));
-
-  let timer;
-  function startAuto() {
-    timer = setInterval(() => goTo(current + 1, false), 5000);
-  }
-  function stopAuto() {
-    clearInterval(timer);
-  }
-  function restartAuto() {
-    stopAuto();
-    startAuto();
-  }
-
-  startAuto();
-  document.querySelector('.carousel').addEventListener('mouseenter', stopAuto);
-  document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
-
-  let startX = null;
-  track.addEventListener('touchstart', e => (startX = e.touches[0].clientX));
-  track.addEventListener('touchend', e => {
-    if (startX == null) return;
-    const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1), true);
-    startX = null;
-  });
-
-  updateCarousel();
-
-  // --------- New: Book recommendation logic ----------
-
-  const form = document.getElementById('search-form');
-  const recommendationsSection = document.getElementById('recommendations');
-
-  // Helper: find a genre block by its heading text
-  function getGenreElement(headingText) {
-    const genres = recommendationsSection.querySelectorAll('.genre');
-    for (const genre of genres) {
-      const h2 = genre.querySelector('h2');
-      if (h2 && h2.textContent.trim() === headingText) {
-        return genre;
-      }
-    }
-    return null;
-  }
-
-  function renderCards(genreName, items) {
-    const genreEl = getGenreElement(genreName);
-    if (!genreEl) return;
-
-    const cardsContainer = genreEl.querySelector('.cards');
-    cardsContainer.innerHTML = ''; // clear existing sample cards
-
-    if (!items || items.length === 0) {
-      cardsContainer.innerHTML = '<p class="card-why">No suggestions found.</p>';
-      return;
-    }
-
-    items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      const title = document.createElement('div');
-      title.className = 'card-title';
-      title.textContent = item.title || 'Untitled';
-
-      const author = document.createElement('div');
-      author.className = 'card-author';
-      author.textContent = item.author ? `by ${item.author}` : '';
-
-      const why = document.createElement('p');
-      why.className = 'card-why';
-      why.textContent = item.why || '';
-
-      card.appendChild(title);
-      card.appendChild(author);
-      card.appendChild(why);
-      cardsContainer.appendChild(card);
-    });
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const destinationInput = form.elements['destination'];
-    const destination = destinationInput.value.trim();
-    if (!destination) return;
-
-    // Optionally: show a "loading" state
-    form.querySelector('button').disabled = true;
-    form.querySelector('button').textContent = 'Finding reads...';
-
-    try {
-      const res = await fetch('/api/recommend', {
-        method: 'POST',
-        body: JSON.stringify({ destination })
+        card.appendChild(title);
+        card.appendChild(author);
+        card.appendChild(why);
+        cardsContainer.appendChild(card);
       });
-
-      if (!res.ok) {
-        console.error('API error:', await res.text());
-        alert('Sorry, something went wrong fetching recommendations.');
-        return;
-      }
-
-      const data = await res.json();
-      const recs = data.recommendations || {};
-
-      renderCards('Romance', recs['Romance']);
-      renderCards('Mystery & Thriller', recs['Mystery & Thriller']);
-      renderCards('Historical Fiction', recs['Historical Fiction']);
-      renderCards('Other Suggestions', recs['Other Suggestions']);
-    } catch (err) {
-      console.error(err);
-      alert('Network error while contacting the server.');
-    } finally {
-      form.querySelector('button').disabled = false;
-      form.querySelector('button').textContent = 'Discover Reads';
     }
-  });
-</script>
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const destinationInput = form.elements['destination'];
+      const destination = destinationInput.value.trim();
+      if (!destination) return;
+
+      form.querySelector('button').disabled = true;
+      form.querySelector('button').textContent = 'Finding reads...';
+
+      try {
+        const res = await fetch('/api/recommend', {
+          method: 'POST',
+          body: JSON.stringify({ destination })
+        });
+
+        if (!res.ok) {
+          console.error('API error:', await res.text());
+          alert('Sorry, something went wrong fetching recommendations.');
+          return;
+        }
+
+        const data = await res.json();
+        const recs = data.recommendations || {};
+
+        renderCards('Romance', recs['Romance']);
+        renderCards('Mystery & Thriller', recs['Mystery & Thriller']);
+        renderCards('Historical Fiction', recs['Historical Fiction']);
+        renderCards('Other Suggestions', recs['Other Suggestions']);
+      } catch (err) {
+        console.error(err);
+        alert('Network error while contacting the server.');
+      } finally {
+        form.querySelector('button').disabled = false;
+        form.querySelector('button').textContent = 'Discover Reads';
+      }
+    });
+  </script>
 </body>
 </html>
