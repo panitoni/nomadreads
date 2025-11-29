@@ -1,6 +1,12 @@
 {
+  "name": "nomadreads",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "vercel-build": "echo static"
+  },
   "dependencies": {
     "openai": "^4.0.0"
-  }
+  },
+  "engines": { "node": ">=18" }
 }

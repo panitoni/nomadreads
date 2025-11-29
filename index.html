@@ -50,68 +50,158 @@
   </footer>
 
   <script>
-    // ----- Carousel (same logic as before) -----
-    const track = document.querySelector('.carousel-track');
-    const slides = Array.from(document.querySelectorAll('.slide'));
-    const prevBtn = document.querySelector('.prev');
-    const nextBtn = document.querySelector('.next');
-    const dots = document.querySelector('.carousel-dots');
+  // --------- Carousel code (existing) ----------
+  const track = document.querySelector('.carousel-track');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const prevBtn = document.querySelector('.prev');
+  const nextBtn = document.querySelector('.next');
+  const dots = document.querySelector('.carousel-dots');
 
-    slides.forEach((_, i) => { const b = document.createElement('button'); b.className='dot'; b.setAttribute('role','tab'); b.setAttribute('aria-label','Slide '+(i+1)); b.addEventListener('click', () => goTo(i, true)); dots.appendChild(b); });
-    let current=0; function update(){ track.style.transform = `translateX(-${current*100}%)`; dots.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active', i===current)); }
-    function goTo(i,user){ current=(i+slides.length)%slides.length; update(); if(user) restartAuto(); }
-    prevBtn.addEventListener('click', ()=>goTo(current-1,true)); nextBtn.addEventListener('click', ()=>goTo(current+1,true));
-    let timer; function startAuto(){ timer=setInterval(()=>goTo(current+1,false), 5000); } function stopAuto(){ clearInterval(timer); } function restartAuto(){ stopAuto(); startAuto(); }
-    startAuto(); document.querySelector('.carousel').addEventListener('mouseenter', stopAuto); document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
-    let startX=null; track.addEventListener('touchstart', e=>startX=e.touches[0].clientX); track.addEventListener('touchend', e=>{ if(startX==null)return; const dx=e.changedTouches[0].clientX-startX; if(Math.abs(dx)>40) goTo(current+(dx<0?1:-1), true); startX=null; });
-    update();
+  slides.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'dot';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', 'Slide ' + (i + 1));
+    b.addEventListener('click', () => goTo(i, true));
+    dots.appendChild(b);
+  });
 
-    // ----- Results fetch & render (LLM) -----
-    const form = document.getElementById('search-form');
-    const input = form.querySelector('input[name="destination"]');
-    const results = document.getElementById('results');
+  let current = 0;
+  function updateCarousel() {
+    track.style.transform = `translateX(-${current * 100}%)`;
+    dots.querySelectorAll('.dot').forEach((d, i) =>
+      d.classList.toggle('active', i === current)
+    );
+  }
 
-    function cardHTML(b) {
-      return `
-      <div class="card">
-        <div class="card-title">${b.title}</div>
-        <div class="card-author">by ${b.author || "Unknown"}</div>
-        <p class="card-why">${b.why || ""}</p>
-        <div class="links">
-          <a href="${b.links.paperback}" target="_blank" rel="noopener">Paperback</a>
-          <a href="${b.links.kindle}" target="_blank" rel="noopener">Kindle</a>
-          <a href="${b.links.audio}" target="_blank" rel="noopener">Audiobook</a>
-        </div>
-      </div>`;
+  function goTo(i, user) {
+    current = (i + slides.length) % slides.length;
+    updateCarousel();
+    if (user) restartAuto();
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1, true));
+  nextBtn.addEventListener('click', () => goTo(current + 1, true));
+
+  let timer;
+  function startAuto() {
+    timer = setInterval(() => goTo(current + 1, false), 5000);
+  }
+  function stopAuto() {
+    clearInterval(timer);
+  }
+  function restartAuto() {
+    stopAuto();
+    startAuto();
+  }
+
+  startAuto();
+  document.querySelector('.carousel').addEventListener('mouseenter', stopAuto);
+  document.querySelector('.carousel').addEventListener('mouseleave', startAuto);
+
+  let startX = null;
+  track.addEventListener('touchstart', e => (startX = e.touches[0].clientX));
+  track.addEventListener('touchend', e => {
+    if (startX == null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1), true);
+    startX = null;
+  });
+
+  updateCarousel();
+
+  // --------- New: Book recommendation logic ----------
+
+  const form = document.getElementById('search-form');
+  const recommendationsSection = document.getElementById('recommendations');
+
+  // Helper: find a genre block by its heading text
+  function getGenreElement(headingText) {
+    const genres = recommendationsSection.querySelectorAll('.genre');
+    for (const genre of genres) {
+      const h2 = genre.querySelector('h2');
+      if (h2 && h2.textContent.trim() === headingText) {
+        return genre;
+      }
+    }
+    return null;
+  }
+
+  function renderCards(genreName, items) {
+    const genreEl = getGenreElement(genreName);
+    if (!genreEl) return;
+
+    const cardsContainer = genreEl.querySelector('.cards');
+    cardsContainer.innerHTML = ''; // clear existing sample cards
+
+    if (!items || items.length === 0) {
+      cardsContainer.innerHTML = '<p class="card-why">No suggestions found.</p>';
+      return;
     }
 
-    function render(data){
-      const cols = data.categories.map(cat => `
-        <div class="genre">
-          <h2>${cat.name}</h2>
-          <div class="cards">
-            ${cat.books.map(cardHTML).join("")}
-          </div>
-        </div>`).join("");
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card';
 
-      results.innerHTML = `
-        <h2 class="results-title">Top books for <em>${data.destination}</em></h2>
-        <div class="genres">${cols}</div>`;
-      results.hidden = false;
-      results.scrollIntoView({ behavior: "smooth" });
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = item.title || 'Untitled';
+
+      const author = document.createElement('div');
+      author.className = 'card-author';
+      author.textContent = item.author ? `by ${item.author}` : '';
+
+      const why = document.createElement('p');
+      why.className = 'card-why';
+      why.textContent = item.why || '';
+
+      card.appendChild(title);
+      card.appendChild(author);
+      card.appendChild(why);
+      cardsContainer.appendChild(card);
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const destinationInput = form.elements['destination'];
+    const destination = destinationInput.value.trim();
+    if (!destination) return;
+
+    // Optionally: show a "loading" state
+    form.querySelector('button').disabled = true;
+    form.querySelector('button').textContent = 'Finding reads...';
+
+    try {
+      const res = await fetch('/api/recommend', {
+        method: 'POST',
+        body: JSON.stringify({ destination })
+      });
+
+      if (!res.ok) {
+        console.error('API error:', await res.text());
+        alert('Sorry, something went wrong fetching recommendations.');
+        return;
+      }
+
+      const data = await res.json();
+      const recs = data.recommendations || {};
+
+      renderCards('Romance', recs['Romance']);
+      renderCards('Mystery & Thriller', recs['Mystery & Thriller']);
+      renderCards('Historical Fiction', recs['Historical Fiction']);
+      renderCards('Other Suggestions', recs['Other Suggestions']);
+    } catch (err) {
+      console.error(err);
+      alert('Network error while contacting the server.');
+    } finally {
+      form.querySelector('button').disabled = false;
+      form.querySelector('button').textContent = 'Discover Reads';
     }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const destination = input.value.trim();
-      if (!destination) return;
-
-      results.hidden = false;
-      results.innerHTML = `<div class="loading">Finding books for <strong>${destination}</strong>…</div>`;
-
-      try {
-        const locale = Intl.DateTimeFormat().resolvedOptions().locale || "";
-        const r = await fetch('/.netlify/functions/recommend', {
+  });
+</script>
+    const r = await fetch('/.netlify/functions/recommend', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ destination, locale })
